@@ -32,6 +32,7 @@ compose.desktop {
                 "jdk.unsupported",
                 "jdk.crypto.ec",
                 "jdk.charsets",
+                "jdk.httpserver",
             )
             packageName = "PhoneFarmDesktop"
             packageVersion = "1.2.2"
