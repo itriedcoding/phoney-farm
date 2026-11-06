@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.PhoneFarm" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/pf_black</item>
+        <item name="android:statusBarColor">@color/pf_black</item>
+        <item name="android:navigationBarColor">@color/pf_black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">@color/pf_chalk</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+</resources>

@@ -1,0 +1,3 @@
+-keepattributes SourceFile,LineNumberTable
+-keep class com.phonefarm.app.data.** { *; }
+-dontwarn org.jetbrains.annotations.**
