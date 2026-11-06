@@ -76,13 +76,10 @@ It is a distribution key for a free MIT app — do not reuse it for anything tha
 
 ## Releasing an update
 
-```bash
-git tag v1.0.1
-git push origin v1.0.1
-```
-
-`.github/workflows/release.yml` builds the APK and attaches it to the GitHub Release. The in-app
-updater finds it automatically, because it reads this repository's release feed at runtime.
+Bump `versionName` / `versionCode` in `app/build.gradle.kts` and push to `main` (or push a `v*`
+tag). `.github/workflows/release.yml` builds the release APK and publishes it as a GitHub Release
+tagged `v<versionName>`. The in-app updater finds it automatically, because it reads this
+repository's release feed at runtime.
 
 ## Architecture
 
