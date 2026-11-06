@@ -15,3 +15,6 @@ captures/
 tools/*.log
 tools/*.zip
 tools/*.tar.gz
+tools/socks5check/
+tools/socks5srv.py
+tools/*.html

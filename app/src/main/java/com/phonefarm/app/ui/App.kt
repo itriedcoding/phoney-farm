@@ -33,6 +33,7 @@ import com.phonefarm.app.update.UpdateManager
 enum class FarmTab(val label: String) {
     FARM("Farm"),
     LIVE("Live"),
+    SOCIAL("Social"),
     AI("AI"),
     ACTIVITY("Log"),
     SETTINGS("Setup"),
@@ -80,6 +81,8 @@ fun FarmApp() {
                         },
                         onWatch = { watching = it.id },
                     )
+
+                    FarmTab.SOCIAL -> SocialScreen()
 
                     FarmTab.AI -> AiScreen()
 

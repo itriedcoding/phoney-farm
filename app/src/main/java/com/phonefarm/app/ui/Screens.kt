@@ -611,6 +611,10 @@ fun SettingsScreen(
             ) { onSettings(settings.copy(wakeLock = it)) }
         }
 
+        ProxyPanel()
+
+        DevicePanel()
+
         SectionHeader("Always on")
         Panel(padding = 14.dp) {
             ToggleRow(

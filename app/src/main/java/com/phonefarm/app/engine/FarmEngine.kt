@@ -13,6 +13,8 @@ import com.phonefarm.app.data.LogEntry
 import com.phonefarm.app.data.LogLevel
 import com.phonefarm.app.data.NodeMode
 import com.phonefarm.app.data.NodeStats
+import com.phonefarm.app.data.Profiles
+import com.phonefarm.app.data.Proxies
 import com.phonefarm.app.data.Settings
 import com.phonefarm.app.data.Store
 import com.phonefarm.app.service.FarmService
@@ -260,11 +262,13 @@ object FarmEngine {
         busy.add(node.id)
         publish()
         scope.launch {
+            val profile = Profiles.find(node.profileId)
+            val proxy = Proxies.find(profile.proxyId)
             val started = SystemClock.elapsedRealtime()
             val result = try {
                 when (node.mode) {
-                    NodeMode.HTTP -> HttpRunner.visit(node)
-                    NodeMode.MONITOR -> HttpRunner.probe(node)
+                    NodeMode.HTTP -> HttpRunner.visit(node, profile, proxy)
+                    NodeMode.MONITOR -> HttpRunner.probe(node, profile, proxy)
                     NodeMode.WEBVIEW -> withContext(Dispatchers.Main.immediate) { WebRunner.render(app, node) }
                 }
             } catch (t: Throwable) {

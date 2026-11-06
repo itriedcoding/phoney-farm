@@ -41,8 +41,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.phonefarm.app.data.FarmNode
 import com.phonefarm.app.data.NodeMode
+import com.phonefarm.app.data.Profiles
 import com.phonefarm.app.util.Fmt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +57,7 @@ fun NodeEditorSheet(
 ) {
     var draft by remember(node?.id) { mutableStateOf(node ?: FarmNode()) }
     var error by remember { mutableStateOf<String?>(null) }
+    val profiles by Profiles.profiles.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -143,6 +146,21 @@ fun NodeEditorSheet(
                     )
                 }
                 Stepper(draft.jitterSec, 0..120, { draft = draft.copy(jitterSec = it) }, suffix = "s")
+            }
+
+            Spacer(Modifier.height(16.dp))
+            Label("Device", Ink.Dim)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                profiles.take(3).forEach { profile ->
+                    Option(
+                        text = profile.name,
+                        selected = draft.profileId.ifBlank { Profiles.primary().id } == profile.id,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        draft = draft.copy(profileId = profile.id)
+                    }
+                }
             }
 
             Spacer(Modifier.height(14.dp))

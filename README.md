@@ -18,7 +18,7 @@ commands over the LAN.
 
 | | |
 |---|---|
-| APK size | ~1.15 MB (R8 minified, no browser engine bundled) |
+| APK size | ~1.2 MB (R8 minified, no browser engine bundled) |
 | LIGHT nodes | plain HTTP + persistent cookie jar — a few KB of RAM per node |
 | SESSION nodes | a WebView is created for the cycle and destroyed afterwards, so idle RAM goes back to the OS |
 | No trackers | no analytics, no telemetry, no crash SDKs, no ads |
@@ -78,6 +78,23 @@ commands over the LAN.
 - Headless mode: `PhoneFarmDesktop.exe --server` runs the same agent with no window, for a machine
   that just needs to farm
 
+**Social automation**
+- Connect Mastodon, Bluesky, Telegram, Discord webhooks or any JSON endpoint you own; tokens and app
+  passwords stay in this app's private storage and are sent only to that provider
+- Post, reply, like and repost through the real provider APIs, once or on a 15m / 1h / 6h / 24h
+  cadence, with the provider's own response — including its rejection — shown next to each action
+- Providers without a usable public API are not imitated: point the custom endpoint at something you
+  control instead of pretending Instagram or TikTok support exists
+
+**SOCKS5 proxies and device profiles**
+- User-supplied SOCKS5 proxies (RFC 1928 + RFC 1929 username/password) and HTTP proxies
+- Requests are tunnelled through the proxy; a dead proxy fails instead of silently going direct
+- Device profiles: each has its own user agent, its own cookie jar and an optional proxy, so one
+  phone can run several independent devices and logins
+- Attach a profile per node in the node editor; profiles and proxies live in Setup
+- LIGHT and MONITOR nodes use the proxy. SESSION (WebView) nodes use the system network stack,
+  because Android does not allow per-request proxy overrides there — stated, not faked
+
 ## Install
 
 Grab the newest APK from [Releases](https://github.com/itriedcoding/phoney-farm/releases) and
@@ -124,15 +141,18 @@ repository's release feed at runtime.
 ## Architecture
 
 ```
-data/      FarmNode, NodeStats, Settings, FarmState, Presets, Remotes — JSON persistence (atomic write + rename)
+data/      FarmNode, NodeStats, Settings, FarmState, Presets, Remotes, Proxies, Profiles, Social
+           — JSON persistence (atomic write + rename)
 engine/    FarmEngine (scheduler, stats, logs, governor), HttpRunner, WebRunner, PowerGovernor,
            LiveHub (preset probes + screen cache), ScreenCapture (offscreen WebView → PNG),
-           RemoteClient (desktop agent API client)
+           RemoteClient (desktop agent API client), SocialRunner (social scheduler),
+           net/Socks5 (RFC 1928/1929 tunnel), net/Net (proxy-aware HTTP)
 service/   FarmService (foreground + wake lock + notification), BootReceiver
 ai/        AiCopilot (tool-calling operator + optional supervisor), AiPrefs
+social/    SocialApi (Mastodon, Bluesky, Telegram, Discord, custom endpoint)
 update/    UpdateManager (GitHub Releases), InstallReceiver (PackageInstaller callbacks)
 ui/        Theme (monochrome system), Common (primitives), Screens, NodeEditor, App shell,
-           LiveScreen, AiScreen, NodeViewer
+           LiveScreen, AiScreen, NodeViewer, SocialScreen, NetworkSheet
 desktop/   Independent Gradle build: FarmCore (scheduler + HTTP runner), ApiServer (LAN JSON API),
            Ui (Compose Desktop), Main (window / --server)
 ```
@@ -144,9 +164,10 @@ count, then schedules its own next run. Everything (nodes, settings, statistics)
 
 ## Scope and fair use
 
-Phone Farm is a general-purpose web automation and keep-alive runner. You choose the targets. Use it
-only on sites and accounts you are allowed to automate, and respect each service's terms and rate
-limits. It is not a bot-detection evasion tool.
+Phone Farm is a general-purpose web automation and keep-alive runner. You choose the targets and the
+accounts. Use it only on sites and accounts you are allowed to automate — your own social accounts,
+channels and endpoints — and respect each service's terms and rate limits. It is not a
+bot-detection evasion tool, and it does not bypass any platform's access controls.
 
 ## License
 

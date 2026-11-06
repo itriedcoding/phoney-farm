@@ -1,13 +1,19 @@
 package com.phonefarm.app.engine
 
+import com.phonefarm.app.data.DeviceProfile
 import com.phonefarm.app.data.FarmNode
+import com.phonefarm.app.data.ProxyEntry
+import com.phonefarm.app.engine.net.Net
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Weightless node runner. Uses plain HTTP with a persistent per-node cookie jar so a farm of
- * hundreds of nodes costs almost no RAM compared to a WebView per node.
+ * Weightless node runner. Uses plain HTTP with a persistent cookie jar so a farm of hundreds of
+ * nodes costs almost no RAM compared to a WebView per node.
+ *
+ * A node can run inside a [DeviceProfile], which gives it that profile's user agent, its own cookie
+ * jar and — when the profile has one — a SOCKS5/HTTP proxy.
  */
 object HttpRunner {
     private const val MAX_BODY_BYTES = 512L * 1024L
@@ -21,15 +27,42 @@ object HttpRunner {
 
     private val cookies = ConcurrentHashMap<String, MutableMap<String, String>>()
 
-    fun visit(node: FarmNode): RunResult = request(node, "GET", readBody = true)
+    fun visit(node: FarmNode, profile: DeviceProfile? = null, proxy: ProxyEntry? = null): RunResult =
+        request(node, "GET", readBody = true, profile = profile, proxy = proxy)
 
-    fun probe(node: FarmNode): RunResult = request(node, "HEAD", readBody = false)
+    fun probe(node: FarmNode, profile: DeviceProfile? = null, proxy: ProxyEntry? = null): RunResult =
+        request(node, "HEAD", readBody = false, profile = profile, proxy = proxy)
 
     fun forget(nodeId: String) {
         cookies.remove(nodeId)
     }
 
-    private fun request(node: FarmNode, method: String, readBody: Boolean): RunResult {
+    private fun request(
+        node: FarmNode,
+        method: String,
+        readBody: Boolean,
+        profile: DeviceProfile?,
+        proxy: ProxyEntry?,
+    ): RunResult {
+        val jarKey = profile?.id?.takeIf { it.isNotBlank() } ?: node.id
+        val userAgent = profile?.userAgent?.takeIf { it.isNotBlank() }
+            ?: if (node.desktopUa) UA_DESKTOP else UA_MOBILE
+
+        if (proxy != null) {
+            val headers = LinkedHashMap<String, String>()
+            jarFor(jarKey).takeIf { it.isNotEmpty() }?.let { jar ->
+                headers["Cookie"] = jar.entries.joinToString("; ") { "${it.key}=${it.value}" }
+            }
+            val response = Net.send(
+                url = node.url,
+                method = method,
+                headers = headers,
+                proxy = proxy,
+                userAgent = userAgent,
+            )
+            return RunResult(response.ok, response.status, response.body.length.toLong(), response.error)
+        }
+
         var connection: HttpURLConnection? = null
         return try {
             connection = (URL(node.url).openConnection() as HttpURLConnection).apply {
@@ -38,16 +71,16 @@ object HttpRunner {
                 readTimeout = READ_TIMEOUT_MS
                 instanceFollowRedirects = true
                 useCaches = false
-                setRequestProperty("User-Agent", if (node.desktopUa) UA_DESKTOP else UA_MOBILE)
+                setRequestProperty("User-Agent", userAgent)
                 setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 setRequestProperty("Accept-Language", "en-US,en;q=0.9")
                 setRequestProperty("Cache-Control", "no-cache")
-                jarFor(node.id).takeIf { it.isNotEmpty() }?.let { jar ->
+                jarFor(jarKey).takeIf { it.isNotEmpty() }?.let { jar ->
                     setRequestProperty("Cookie", jar.entries.joinToString("; ") { "${it.key}=${it.value}" })
                 }
             }
             val code = connection.responseCode
-            harvestCookies(node.id, connection.headerFields)
+            harvestCookies(jarKey, connection.headerFields)
 
             var read = 0L
             if (readBody && code in 200..299) {
@@ -86,12 +119,12 @@ object HttpRunner {
         }
     }
 
-    private fun jarFor(nodeId: String): MutableMap<String, String> =
-        cookies.getOrPut(nodeId) { mutableMapOf() }
+    private fun jarFor(jarKey: String): MutableMap<String, String> =
+        cookies.getOrPut(jarKey) { mutableMapOf() }
 
-    private fun harvestCookies(nodeId: String, headers: Map<String, List<String>>?) {
+    private fun harvestCookies(jarKey: String, headers: Map<String, List<String>>?) {
         headers ?: return
-        val jar = jarFor(nodeId)
+        val jar = jarFor(jarKey)
         headers.forEach { (key, values) ->
             if (key.equals("Set-Cookie", ignoreCase = true)) {
                 values.forEach { raw ->

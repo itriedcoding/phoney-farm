@@ -31,6 +31,7 @@ data class FarmNode(
     val desktopUa: Boolean = false,
     val images: Boolean = true,
     val script: String = "",
+    val profileId: String = "",
     val createdAt: Long = System.currentTimeMillis(),
 ) {
     val host: String
@@ -61,6 +62,7 @@ data class FarmNode(
         put("desktopUa", desktopUa)
         put("images", images)
         put("script", script)
+        put("profileId", profileId)
         put("createdAt", createdAt)
     }
 
@@ -79,6 +81,7 @@ data class FarmNode(
             desktopUa = o.optBoolean("desktopUa", false),
             images = o.optBoolean("images", true),
             script = o.optString("script"),
+            profileId = o.optString("profileId"),
             createdAt = o.optLong("createdAt", System.currentTimeMillis()),
         )
     }
