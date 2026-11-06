@@ -23,15 +23,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.phonefarm.app.data.FarmNode
 import com.phonefarm.app.engine.FarmEngine
 import com.phonefarm.app.update.UpdateManager
 
 enum class FarmTab(val label: String) {
     FARM("Farm"),
-    ACTIVITY("Activity"),
-    SETTINGS("Settings"),
+    LIVE("Live"),
+    AI("AI"),
+    ACTIVITY("Log"),
+    SETTINGS("Setup"),
 }
 
 @Composable
@@ -43,6 +47,7 @@ fun FarmApp() {
     var tab by rememberSaveable { mutableStateOf(FarmTab.FARM) }
     var editorTarget by rememberSaveable { mutableStateOf<String?>(null) }
     var showUpdates by rememberSaveable { mutableStateOf(false) }
+    var watching by rememberSaveable { mutableStateOf<String?>(null) }
 
     Surface(Modifier.fillMaxSize(), color = Ink.Void) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -60,6 +65,23 @@ fun FarmApp() {
                         onRunNow = { FarmEngine.runNow(it.id) },
                         onOpenUpdates = { showUpdates = true },
                     )
+
+                    FarmTab.LIVE -> LiveScreen(
+                        state = state,
+                        onAddPreset = { preset ->
+                            FarmEngine.upsert(
+                                FarmNode(
+                                    name = preset.name,
+                                    url = preset.url,
+                                    mode = preset.mode,
+                                    intervalSec = preset.intervalSec,
+                                ),
+                            )
+                        },
+                        onWatch = { watching = it.id },
+                    )
+
+                    FarmTab.AI -> AiScreen()
 
                     FarmTab.ACTIVITY -> ActivityScreen(
                         logs = logs,
@@ -97,6 +119,13 @@ fun FarmApp() {
         )
     }
 
+    if (watching != null) {
+        val node = state.nodes.firstOrNull { it.id == watching }
+        if (node != null) {
+            NodeViewer(node) { watching = null }
+        }
+    }
+
     if (showUpdates) {
         UpdateSheet(update) { showUpdates = false }
     }
@@ -120,13 +149,13 @@ private fun BottomBar(current: FarmTab, onSelect: (FarmTab) -> Unit) {
                     Box(
                         Modifier
                             .height(2.dp)
-                            .width(if (selected) 20.dp else 0.dp)
+                            .width(if (selected) 18.dp else 0.dp)
                             .background(Ink.Paper),
                     )
                     Spacer(Modifier.height(14.dp))
                     Text(
                         item.label.uppercase(),
-                        style = monoStyle(9, if (selected) Ink.Chalk else Ink.Dim, androidx.compose.ui.text.font.FontWeight.Medium, 1.6f),
+                        style = monoStyle(8, if (selected) Ink.Chalk else Ink.Dim, FontWeight.Medium, 1.4f),
                     )
                 }
             }

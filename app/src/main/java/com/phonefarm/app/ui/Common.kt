@@ -6,6 +6,13 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -272,5 +279,47 @@ fun StatCell(label: String, value: String, modifier: Modifier = Modifier) {
         Label(label, Ink.Dim)
         Spacer(Modifier.height(5.dp))
         Text(value, style = monoStyle(16, Ink.Chalk, FontWeight.Medium))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FarmField(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    minLines: Int = 3,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    placeholder: String = "",
+    secret: Boolean = false,
+) {
+    Column(modifier.fillMaxWidth()) {
+        Label(label, Ink.Dim)
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = singleLine,
+            minLines = if (singleLine) 1 else minLines,
+            placeholder = {
+                if (placeholder.isNotEmpty()) Text(placeholder, style = monoStyle(12, Ink.Dim))
+            },
+            textStyle = monoStyle(13, Ink.Chalk),
+            shape = RoundedCornerShape(4.dp),
+            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Ink.Paper,
+                unfocusedBorderColor = Ink.Line,
+                focusedTextColor = Ink.Chalk,
+                unfocusedTextColor = Ink.Chalk,
+                cursorColor = Ink.Paper,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+        )
     }
 }

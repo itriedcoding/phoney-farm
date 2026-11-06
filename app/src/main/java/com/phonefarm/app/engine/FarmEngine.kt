@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.phonefarm.app.BuildConfig
+import com.phonefarm.app.ai.AiCopilot
 import com.phonefarm.app.data.FarmNode
 import com.phonefarm.app.data.FarmState
 import com.phonefarm.app.data.Governor
@@ -252,6 +253,7 @@ object FarmEngine {
             }
 
         autoUpdateTick()
+        runCatching { AiCopilot.superviseIfDue(app) }
     }
 
     private fun dispatch(node: FarmNode, multiplier: Int) {

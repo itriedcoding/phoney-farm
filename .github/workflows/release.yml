@@ -9,8 +9,11 @@ on:
 permissions:
   contents: write
 
+env:
+  VERSION_FILE: app/build.gradle.kts
+
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,25 +49,100 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
+      - name: Name APK
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          cp "$APK" "PhoneFarm-${{ steps.version.outputs.version }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: PhoneFarm-*.apk
+          if-no-files-found: error
+
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Desktop $VERSION"
+
+      - name: Build desktop app image
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew -p desktop createDistributable --no-daemon --stacktrace
+
+      - name: Package desktop bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="desktop/build/compose/binaries/main/app/PhoneFarmDesktop"
+          test -d "$SRC"
+          OUT="PhoneFarmDesktop-${{ steps.version.outputs.version }}-windows.zip"
+          cd "$(dirname "$SRC")"
+          powershell -NoProfile -Command "Compress-Archive -Path 'PhoneFarmDesktop' -DestinationPath '$OUT' -Force"
+          mv "$OUT" "$GITHUB_WORKSPACE/$OUT"
+          ls -lh "$GITHUB_WORKSPACE/$OUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop
+          path: PhoneFarmDesktop-*-windows.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [android, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
-          ASSET="PhoneFarm-${VERSION}.apk"
-          cp "$APK" "$ASSET"
+          ls -lh
           NOTES="docs/release-notes/v${VERSION}.md"
+          ASSETS=(PhoneFarm-"${VERSION}".apk PhoneFarmDesktop-"${VERSION}"-windows.zip)
+          for asset in "${ASSETS[@]}"; do test -f "$asset"; done
           if gh release view "v${VERSION}" > /dev/null 2>&1; then
-            gh release upload "v${VERSION}" "$ASSET" --clobber
+            gh release upload "v${VERSION}" "${ASSETS[@]}" --clobber
           elif [ -f "$NOTES" ]; then
-            gh release create "v${VERSION}" "$ASSET" \
+            gh release create "v${VERSION}" "${ASSETS[@]}" \
               --title "Phone Farm ${VERSION}" \
               --notes-file "$NOTES" \
               --latest
           else
-            gh release create "v${VERSION}" "$ASSET" \
+            gh release create "v${VERSION}" "${ASSETS[@]}" \
               --title "Phone Farm ${VERSION}" \
               --generate-notes \
               --latest
