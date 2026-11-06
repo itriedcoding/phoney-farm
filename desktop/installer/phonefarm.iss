@@ -3,7 +3,7 @@
 ; The app image itself comes from: gradlew -p desktop createDistributable
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.2.1"
+  #define MyAppVersion "1.2.2"
 #endif
 
 #define MyAppName "Phone Farm Desktop"

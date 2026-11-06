@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.phonefarm"
-version = "1.2.1"
+version = "1.2.2"
 
 kotlin {
     jvmToolchain(17)
@@ -22,8 +22,19 @@ compose.desktop {
         mainClass = "com.phonefarm.desktop.MainKt"
         jvmArgs += listOf("-Dfile.encoding=UTF-8")
         nativeDistributions {
+            // The packaged runtime only contains modules jdeps finds. Our HTTP layer uses
+            // java.net.http at runtime, and TLS needs the EC provider, so name them explicitly.
+            modules(
+                "java.net.http",
+                "java.naming",
+                "java.desktop",
+                "java.management",
+                "jdk.unsupported",
+                "jdk.crypto.ec",
+                "jdk.charsets",
+            )
             packageName = "PhoneFarmDesktop"
-            packageVersion = "1.2.1"
+            packageVersion = "1.2.2"
             description = "Phone Farm desktop agent"
             vendor = "Phone Farm"
             copyright = "MIT"
