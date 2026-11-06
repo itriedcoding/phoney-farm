@@ -130,7 +130,8 @@ Requires JDK 17 and the Android SDK (compile SDK 34, build tools 34.0.0). The si
 The desktop agent is a separate Gradle build:
 
 ```bash
-./gradlew -p desktop packageReleaseExe    # Windows .exe installer (needs WiX)
+./gradlew -p desktop createDistributable   # unpacked app image, used by the .exe installer
+# the installer is compiled from desktop/installer/phonefarm.iss with Inno Setup (ISCC.exe)
 ./gradlew -p desktop createDistributable  # unpacked app image for local runs
 ./gradlew -p desktop run --args="--server" # headless agent on port 8787
 ```

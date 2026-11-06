@@ -80,39 +80,36 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Desktop $VERSION"
 
-      - name: Ensure WiX toolset
+      - name: Ensure Inno Setup
         shell: pwsh
         run: |
-          function Refresh-Path {
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
           }
-          Refresh-Path
-          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
-            choco install wixtoolset --no-progress -y
-            Refresh-Path
-          }
-          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
-            $candidate = Get-ChildItem "C:\Program Files (x86)\WiX Toolset*" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($candidate) {
-              $env:Path += ";$($candidate.FullName)\bin"
-              "$($candidate.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            }
-          }
-          $candle = Get-Command candle.exe -ErrorAction SilentlyContinue
-          if (-not $candle) { throw "WiX toolset is required to build the .exe installer" }
-          Write-Host "candle: $($candle.Source)"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup is required to build the .exe installer" }
+          Write-Host "ISCC: $iscc"
 
-      - name: Build Windows installer
+      - name: Build desktop app image
         shell: bash
         run: |
           chmod +x gradlew
-          ./gradlew -p desktop packageReleaseExe --no-daemon --stacktrace
+          ./gradlew -p desktop createDistributable --no-daemon --stacktrace
+
+      - name: Build .exe installer
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          & $iscc "/DMyAppVersion=${{ steps.version.outputs.version }}" "desktop\installer\phonefarm.iss"
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+          Get-ChildItem dist\windows
 
       - name: Collect installer
         shell: bash
         run: |
           set -euo pipefail
-          EXE=$(ls desktop/build/compose/binaries/main-release/exe/*.exe | head -1)
+          EXE=$(ls dist/windows/*.exe | head -1)
+          test -s "$EXE"
           OUT="PhoneFarmDesktop-${{ steps.version.outputs.version }}.exe"
           cp "$EXE" "$OUT"
           ls -lh "$OUT"

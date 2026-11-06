@@ -1,5 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-
 plugins {
     kotlin("jvm") version "2.0.21"
     id("org.jetbrains.compose") version "1.7.3"
@@ -24,7 +22,6 @@ compose.desktop {
         mainClass = "com.phonefarm.desktop.MainKt"
         jvmArgs += listOf("-Dfile.encoding=UTF-8")
         nativeDistributions {
-            targetFormats(TargetFormat.Exe)
             packageName = "PhoneFarmDesktop"
             packageVersion = "1.2.1"
             description = "Phone Farm desktop agent"
