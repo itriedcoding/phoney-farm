@@ -22,8 +22,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Ensure Android SDK packages
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --sdk_root="$SDK" --licenses > /dev/null 2>&1 || true
+            yes | "$SDKMANAGER" --sdk_root="$SDK" "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1 || true
+          fi
+          ls "$SDK/platforms" "$SDK/build-tools"
 
       - name: Read version
         id: version
@@ -33,20 +42,31 @@ jobs:
           echo "Phone Farm $VERSION"
 
       - name: Build release APK
-        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
-
-      - name: Collect artifact
         run: |
-          mkdir -p out
-          cp app/build/outputs/apk/release/*.apk "out/PhoneFarm-${{ steps.version.outputs.version }}.apk"
-          ls -lh out
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
-      - name: Publish to GitHub Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Phone Farm ${{ steps.version.outputs.version }}
-          files: out/*.apk
-          generate_release_notes: true
-          draft: false
-          make_latest: true
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          ASSET="PhoneFarm-${VERSION}.apk"
+          cp "$APK" "$ASSET"
+          NOTES="docs/release-notes/v${VERSION}.md"
+          if gh release view "v${VERSION}" > /dev/null 2>&1; then
+            gh release upload "v${VERSION}" "$ASSET" --clobber
+          elif [ -f "$NOTES" ]; then
+            gh release create "v${VERSION}" "$ASSET" \
+              --title "Phone Farm ${VERSION}" \
+              --notes-file "$NOTES" \
+              --latest
+          else
+            gh release create "v${VERSION}" "$ASSET" \
+              --title "Phone Farm ${VERSION}" \
+              --generate-notes \
+              --latest
+          fi
+          gh release view "v${VERSION}" --json url,assets --jq '.url, (.assets[].name)'
