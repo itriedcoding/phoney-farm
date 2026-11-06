@@ -215,8 +215,8 @@ fun SectionHeader(title: String, action: (@Composable () -> Unit)? = null) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Label(title, Ink.Dim)
-        Spacer(Modifier.width(1.dp))
-        Box(Modifier.height(1.dp).padding(start = 10.dp).fillMaxWidth(1f).background(Ink.LineSoft))
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(Ink.LineSoft))
         if (action != null) {
             Spacer(Modifier.width(12.dp))
             action()
