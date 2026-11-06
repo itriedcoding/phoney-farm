@@ -100,10 +100,17 @@ commands over the LAN.
 Grab the newest APK from [Releases](https://github.com/itriedcoding/phoney-farm/releases) and
 sideload it. Android 8.0 (API 26) or newer.
 
-For the desktop, download `PhoneFarmDesktop-<version>-windows.zip`, unpack it anywhere and run
-`PhoneFarmDesktop.exe`. The window shows the LAN address and access token to pair from the phone's
-**Live → Desktop agents** panel. The bundle is a self-contained app image; no installer and no
-separate JRE are needed.
+For the desktop, download `PhoneFarmDesktop-<version>.exe` and run it — a single installer, no zip
+and no separate JRE. The window shows the LAN address and access token to pair from the phone's
+**Live → Desktop agents** panel.
+
+The window renders with Skia's software backend by default, so it opens on VMs, remote-desktop
+sessions and machines without a usable GPU; start it with `--gpu` to opt into hardware rendering. If
+start-up ever fails, the agent keeps running and the reason goes to `%USERPROFILE%\.phonefarm\desktop.log`.
+
+Phone Farm Desktop needs no virtualisation. A failure mentioning **KVM** (or HAXM/WHPX) comes from an
+Android emulator, not from this app: you are launching the APK inside an emulator on the PC instead of
+running `PhoneFarmDesktop.exe`. Put the APK on the phone itself, and use the desktop app on Windows.
 
 For uninterrupted 24/7 operation:
 
@@ -123,7 +130,8 @@ Requires JDK 17 and the Android SDK (compile SDK 34, build tools 34.0.0). The si
 The desktop agent is a separate Gradle build:
 
 ```bash
-./gradlew -p desktop createDistributable   # self-contained app image
+./gradlew -p desktop packageReleaseExe    # Windows .exe installer (needs WiX)
+./gradlew -p desktop createDistributable  # unpacked app image for local runs
 ./gradlew -p desktop run --args="--server" # headless agent on port 8787
 ```
 

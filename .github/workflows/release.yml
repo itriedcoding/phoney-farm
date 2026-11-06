@@ -80,28 +80,47 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Desktop $VERSION"
 
-      - name: Build desktop app image
+      - name: Ensure WiX toolset
+        shell: pwsh
+        run: |
+          function Refresh-Path {
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          }
+          Refresh-Path
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            choco install wixtoolset --no-progress -y
+            Refresh-Path
+          }
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            $candidate = Get-ChildItem "C:\Program Files (x86)\WiX Toolset*" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($candidate) {
+              $env:Path += ";$($candidate.FullName)\bin"
+              "$($candidate.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
+          }
+          $candle = Get-Command candle.exe -ErrorAction SilentlyContinue
+          if (-not $candle) { throw "WiX toolset is required to build the .exe installer" }
+          Write-Host "candle: $($candle.Source)"
+
+      - name: Build Windows installer
         shell: bash
         run: |
           chmod +x gradlew
-          ./gradlew -p desktop createDistributable --no-daemon --stacktrace
+          ./gradlew -p desktop packageReleaseExe --no-daemon --stacktrace
 
-      - name: Package desktop bundle
+      - name: Collect installer
         shell: bash
         run: |
           set -euo pipefail
-          SRC="desktop/build/compose/binaries/main/app/PhoneFarmDesktop"
-          test -d "$SRC"
-          OUT="PhoneFarmDesktop-${{ steps.version.outputs.version }}-windows.zip"
-          cd "$(dirname "$SRC")"
-          powershell -NoProfile -Command "Compress-Archive -Path 'PhoneFarmDesktop' -DestinationPath '$OUT' -Force"
-          mv "$OUT" "$GITHUB_WORKSPACE/$OUT"
-          ls -lh "$GITHUB_WORKSPACE/$OUT"
+          EXE=$(ls desktop/build/compose/binaries/main-release/exe/*.exe | head -1)
+          OUT="PhoneFarmDesktop-${{ steps.version.outputs.version }}.exe"
+          cp "$EXE" "$OUT"
+          ls -lh "$OUT"
 
       - uses: actions/upload-artifact@v4
         with:
           name: desktop
-          path: PhoneFarmDesktop-*-windows.zip
+          path: PhoneFarmDesktop-*.exe
           if-no-files-found: error
 
   publish:
@@ -132,7 +151,7 @@ jobs:
           set -euo pipefail
           ls -lh
           NOTES="docs/release-notes/v${VERSION}.md"
-          ASSETS=(PhoneFarm-"${VERSION}".apk PhoneFarmDesktop-"${VERSION}"-windows.zip)
+          ASSETS=(PhoneFarm-"${VERSION}".apk PhoneFarmDesktop-"${VERSION}".exe)
           for asset in "${ASSETS[@]}"; do test -f "$asset"; done
           if gh release view "v${VERSION}" > /dev/null 2>&1; then
             gh release upload "v${VERSION}" "${ASSETS[@]}" --clobber

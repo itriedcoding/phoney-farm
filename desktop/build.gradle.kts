@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.phonefarm"
-version = "1.1.0"
+version = "1.2.1"
 
 kotlin {
     jvmToolchain(17)
@@ -22,12 +22,14 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.phonefarm.desktop.MainKt"
+        jvmArgs += listOf("-Dfile.encoding=UTF-8")
         nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Exe)
+            targetFormats(TargetFormat.Exe)
             packageName = "PhoneFarmDesktop"
-            packageVersion = "1.1.0"
+            packageVersion = "1.2.1"
             description = "Phone Farm desktop agent"
             vendor = "Phone Farm"
+            copyright = "MIT"
             windows {
                 menuGroup = "Phone Farm"
                 shortcut = true
